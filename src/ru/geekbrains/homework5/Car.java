@@ -1,5 +1,10 @@
 package ru.geekbrains.homework5;
 
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 public class Car implements Runnable {
     private static int CARS_COUNT;
 
@@ -9,6 +14,10 @@ public class Car implements Runnable {
 
     private Race race;
     private int speed;
+    private CyclicBarrier startFlag;
+    private CountDownLatch checkeredFlag;
+    private AtomicBoolean isWinner;
+
     private String name;
 
     public String getName() {
@@ -19,9 +28,12 @@ public class Car implements Runnable {
         return speed;
     }
 
-    public Car(Race race, int speed) {
+    public Car(Race race, int speed, CyclicBarrier startFlag, CountDownLatch checkeredFlag, AtomicBoolean isWinner) {
         this.race = race;
         this.speed = speed;
+        this.startFlag = startFlag;
+        this.checkeredFlag = checkeredFlag;
+        this.isWinner = isWinner;
         CARS_COUNT++;
         this.name = "Участник #" + CARS_COUNT;
     }
@@ -35,9 +47,20 @@ public class Car implements Runnable {
         } catch (Exception e) {
             e.printStackTrace();
         }
+        try {
+            startFlag.await();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (BrokenBarrierException e) {
+            e.printStackTrace();
+        }
         for (int i = 0; i < race.getStages().size(); i++) {
             race.getStages().get(i).go(this);
         }
+        checkeredFlag.countDown();
+        // Проверить, есть ли победитель, если нет, то стать победителем.
+        if(isWinner.compareAndSet(false, true))
+            System.out.println(this.name + " - WIN");
     }
 }
 
